@@ -18,7 +18,6 @@ import { AnyZodObject, z } from "zod";
 
 export const validateRequest = (zodSchema: z.ZodTypeAny) => async (req: Request, res: Response, next: NextFunction) => {
    try {
-       console.log("input ", req.body)
       if (req?.body?.data) {
          req.body = JSON.parse(req.body.data);
       }

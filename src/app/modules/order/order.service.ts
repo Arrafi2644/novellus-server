@@ -182,8 +182,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     const { orderType, foods, customerInfo, deliveryOption } = payload;
 
     const calculated = await calculateOrderPrice(foods);
-console.log("Customer info ", customerInfo)
-console.log("Foods info ", foods)
     const orderDoc: any = {
       orderType,
       foods: calculated.foodsWithPrice,
@@ -349,9 +347,9 @@ console.log("Foods info ", foods)
     }
 
        // Printer job create
-    await PrintJob.create({
-      orderId: order[0]._id.toString(),
-    });
+    // await PrintJob.create({
+    //   orderId: order[0]._id.toString(),
+    // });
 
     return {
       order: updatedOrder,

@@ -31,7 +31,7 @@ app.use(cors({
 app.use("/api/v1", router)
 
 // Start worker after routes
-startPrintWorker();
+// startPrintWorker();
 
 app.get("/", (req: Request, res: Response) => {
     res.status(200).json({

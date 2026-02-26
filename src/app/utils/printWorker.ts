@@ -54,10 +54,6 @@ export const startPrintWorker = () => {
                     })),
                 };
 
-                console.log("Foods , ", order.foods.map((f: any) => (f)),)
-
-                console.log("print payload ", invoiceData)
-
                 await printThermalInvoice(invoiceData); // Printer call
 
                 job.status = "PRINTED";
