@@ -18,10 +18,13 @@ export const calculateOrderPrice = async (foods: IOrderFoodInput[]) => {
     const variant = foodDoc.variants.find(v => v.size === f.variant);
     if (!variant) throw new Error(`Variant "${f.variant}" not found for food: ${foodDoc.name}`);
 
+  //  console.log("food doc in calculate price", foodDoc)
+
     let unitPrice = variant.offerPrice ? variant.offerPrice : variant.price; // base price from variant
 
     const resolvedIngredients: { name: string; price: number }[] = [];
     const categoryTitle = foodDoc.category?.title;
+    const foodName = foodDoc.name;
 
     // ---------- EXTRA INGREDIENTS ----------
     if (f.extraIngredients?.length) {
@@ -34,7 +37,8 @@ export const calculateOrderPrice = async (foods: IOrderFoodInput[]) => {
 
         if (categoryTitle === "Metro") {
           priceToAdd += 1.5;
-        } else if (categoryTitle === "Novellus") {
+        }
+         if (foodName === "NOVELLUS AG") {
           priceToAdd = index < 4 ? 0 : ing.price;
         }
 

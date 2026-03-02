@@ -27,6 +27,8 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
       const isPaid = session.payment_status === "paid";
 
       console.log("is Paid in stripe web hook  ", isPaid)
+
+      
       // 1️⃣ Update payment
       const payment = await Payment.findByIdAndUpdate(
         paymentId,

@@ -188,7 +188,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       totalPrice: calculated.totalPrice,
       deliveryOption,
       status: OrderStatus.PENDING,
- 
+
     };
 
     /* ---------- USER (ONLINE only) ---------- */
@@ -262,7 +262,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
             : OrderStatus.PENDING,
       },
       { new: true, session }
-    ).populate("payment");
+    ).populate("payment").populate("foods.food");
 
     /* ---------- STRIPE ---------- */
     let checkoutUrl: string | null = null;
@@ -287,8 +287,9 @@ const createOrder = async (payload: TCreateOrderPayload) => {
           orderId: orderId.toString(),
           paymentId: payment[0]._id.toString(),
         },
-        success_url: envVars.STRIPE.STRIPE_SUCCESS_URL,
-        cancel_url: `${envVars.STRIPE.STRIPE_CANCEL_URL}/payment-cancel`,
+        // success_url: envVars.STRIPE.STRIPE_SUCCESS_URL,
+        success_url: `${envVars.STRIPE.STRIPE_SUCCESS_URL}?paymentSuccess=true&orderId=${orderId}`,
+        cancel_url: `${envVars.STRIPE.STRIPE_CANCEL_URL}?paymentSuccess=false&orderId=null`,
       });
 
       checkoutUrl = stripeSession.url;
@@ -346,7 +347,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       invoiceUrl = invoice.downloadUrl;
     }
 
-       // Printer job create
+    // Printer job create
     // await PrintJob.create({
     //   orderId: order[0]._id.toString(),
     // });

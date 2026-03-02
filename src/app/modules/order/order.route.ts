@@ -38,7 +38,6 @@ router.get(
 // Get single order by ID
 router.get(
     "/:id",
-    checkAuth(...Object.values(Role)),
     OrderControllers.getSingleOrder
 );
 
