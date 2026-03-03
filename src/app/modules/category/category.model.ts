@@ -26,6 +26,10 @@ const categorySchema = new Schema<ICategory>({
         enum: Object.values(CategoryStatus),
         default: CategoryStatus.ACTIVE,
     },
+     showOrder: {
+    type: Number,
+    default: 1, // 🔹 default value
+  },
 }, {
     timestamps: true,
 });
