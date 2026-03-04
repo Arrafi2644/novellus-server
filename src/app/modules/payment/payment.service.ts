@@ -92,36 +92,76 @@ const getInvoiceDownloadUrl = async (paymentId: string) => {
   }
 
   // 🧾 Generate PDF buffer
-  const invoiceBuffer = await generatePdf({
-    orderId: order._id.toString(),
-    orderDate: order.createdAt,
-    orderType: order.orderType,
-    orderStatus: order.status,
-    deliveryOption: order.deliveryOption,
+  // const invoiceBuffer = await generatePdf({
+  //   orderId: order._id.toString(),
+  //   orderDate: order.createdAt,
+  //   orderType: order.orderType,
+  //   orderStatus: order.status,
+  //   deliveryOption: order.deliveryOption,
 
-    paymentMethod: payment.paymentMethod,
-    paymentStatus: payment.paymentStatus,
-    transactionId: payment.transactionId as string,
-    amount: payment.amount,
-    currency: "EUR",
+  //   paymentMethod: payment.paymentMethod,
+  //   paymentStatus: payment.paymentStatus,
+  //   transactionId: payment.transactionId as string,
+  //   amount: payment.amount,
+  //   currency: "EUR",
 
-    customerName: order?.user?.name || "N/A",
-    customerEmail: order?.user?.email || "N/A",
-    customerPhone: order?.user?.phone || "N/A",
-    customerAddress: order?.deliveryAddress || "N/A",
+  //   customerName: order?.user?.name || "N/A",
+  //   customerEmail: order?.user?.email || "N/A",
+  //   customerPhone: order?.user?.phone || "N/A",
+  //   customerAddress: order?.deliveryAddress || "N/A",
 
-    foods: order.foods.map((f: any) => ({
-      name: f.food.name,
-      quantity: f.quantity,
-      price: f.unitPrice,
-      subtotal: f.lineTotal,
-      ingredients: f.ingredients.map((ing: any) => ({
+  //   foods: order.foods.map((f: any) => ({
+  //     name: f.food.name,
+  //     quantity: f.quantity,
+  //     price: f.unitPrice,
+  //     subtotal: f.lineTotal,
+  //     ingredients: f.ingredients.map((ing: any) => ({
+  //       name: ing.name,
+  //       price: ing.price,
+  //     })),
+  //   })),
+  // });
+const invoiceBuffer = await generatePdf({
+  orderId: order._id.toString(),
+  customOrderId: order?.customOrderId,
+  orderDate: order.createdAt,
+  orderType: order.orderType,
+  orderStatus: order.status,
+  deliveryOption: order.deliveryOption,
+
+  paymentMethod: payment.paymentMethod,
+  paymentStatus: payment.paymentStatus,
+  transactionId: payment.transactionId as string,
+  amount: payment.amount,
+  currency: "EUR",
+
+  customerName: order?.user?.name || "N/A",
+  customerEmail: order?.user?.email || "N/A",
+  customerPhone: order?.user?.phone || "N/A",
+  customerAddress: order?.deliveryAddress || "N/A",
+
+  foods: order.foods.map((f: any) => ({
+    name: f.food.name,
+    quantity: f.quantity,
+    variant: f.variant || "Normal",          // size
+    pizzaSlices: f.pizzaSlices ?? null,     // slices if any
+    selectedPizzas: f.selectedPizzas || [], // multi-pizzas if any
+    price: f.unitPrice,
+    extrasTotal: f.extraIngredients?.reduce((sum: number, ing: any) => sum + ing.price, 0) || 0,
+    subtotal: f.lineTotal,
+
+    ingredients: [
+      ...(f.ingredients || []).map((ing: any) => ({
         name: ing.name,
         price: ing.price,
       })),
-    })),
-  });
-
+      ...(f.extraIngredients || []).map((ing: any) => ({
+        name: ing.name,
+        price: ing.price,
+      })),
+    ],
+  })),
+});
   // ☁️ Upload to Cloudinary
   const cloudinaryResult = await uploadBufferToCloudinary(
     invoiceBuffer,

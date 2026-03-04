@@ -12,7 +12,7 @@ const startServer = async () => {
     console.log("Mongoose is connected!!!");
 
     server = app.listen(envVars.PORT, () => {
-      console.log(`FoodNest app is running on port ${envVars.PORT}`);
+      console.log(`Pizzerianovellus app is running on port ${envVars.PORT}`);
     })
   } catch (error) {
     console.log(error);

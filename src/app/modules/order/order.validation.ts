@@ -247,6 +247,9 @@ const orderFoodSchema = z.object({
 
   defaultIngredients: z.array(ingredientRefSchema).optional(),
   extraIngredients: z.array(ingredientRefSchema).optional(),
+    // ✅ Pizza specific fields
+  selectedPizzas: z.array(z.string()).optional(),
+  pizzaSlices: z.number().nullable().optional(),
 });
 
 /* ---------- Customer Info ---------- */

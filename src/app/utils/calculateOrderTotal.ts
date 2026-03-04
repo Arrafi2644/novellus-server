@@ -8,6 +8,8 @@ export const calculateOrderPrice = async (foods: IOrderFoodInput[]) => {
   const foodsWithPrice: IOrderFood[] = [];
   let totalPrice = 0;
 
+console.log("Foods in calculate ", foods)
+
   for (const f of foods) {
     const foodId = new Types.ObjectId(f.food);
     const foodDoc = await Food.findById(foodId).populate("category");
@@ -35,8 +37,8 @@ export const calculateOrderPrice = async (foods: IOrderFoodInput[]) => {
       extraIngredientDocs.forEach((ing, index) => {
         let priceToAdd = ing.price;
 
-        if (categoryTitle === "Metro") {
-          priceToAdd += 1.5;
+        if (categoryTitle === "Pizza a Metro") {
+          priceToAdd = 4;
         }
          if (foodName === "NOVELLUS AG") {
           priceToAdd = index < 4 ? 0 : ing.price;
@@ -70,6 +72,8 @@ export const calculateOrderPrice = async (foods: IOrderFoodInput[]) => {
       ingredients: resolvedIngredients,
       unitPrice,
       lineTotal,
+      selectedPizzas: f.selectedPizzas || [],
+      pizzaSlices: f.pizzaSlices || null,
     });
 
     totalPrice += lineTotal;

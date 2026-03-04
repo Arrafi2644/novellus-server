@@ -7,7 +7,7 @@ import cors from "cors"
 import { PaymentController } from "./app/modules/payment/payment.controller";
 import path from "path";
 import { envVars } from "./app/config/env";
-import { startPrintWorker } from "./app/utils/printWorker";
+// import { startPrintWorker } from "./app/utils/printWorker";
 
 const app = express()
 
@@ -35,7 +35,7 @@ app.use("/api/v1", router)
 
 app.get("/", (req: Request, res: Response) => {
     res.status(200).json({
-        message: "FoodNest application is running!!!"
+        message: "Pizzerianovellus application is running!!!"
     })
 })
 

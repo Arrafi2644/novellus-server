@@ -113,6 +113,16 @@ import {
   DeliveryOption,
 } from "./order.interface";
 
+// customer order Id counter
+const counterSchema = new Schema({
+  _id: { type: String, required: true },
+  seq: { type: Number, default: 1000 },
+});
+
+export const Counter = model("Counter", counterSchema);
+
+
+// Order schema 
 /* ---------- Ingredient ---------- */
 const orderIngredientSchema = new Schema<IOrderIngredient>(
   {
@@ -161,6 +171,15 @@ const orderFoodSchema = new Schema<IOrderFood>(
       required: true,
       min: 0,
     },
+    selectedPizzas: {
+      type: [String], // array of pizza names
+      default: [],
+    },
+
+    pizzaSlices: {
+      type: Number,
+      default: null,
+    },
   },
   { _id: false }
 );
@@ -168,6 +187,11 @@ const orderFoodSchema = new Schema<IOrderFood>(
 /* ---------- Order ---------- */
 const orderSchema = new Schema<IOrder>(
   {
+    customOrderId: {
+      type: Number,
+      unique: true,
+      required: true,
+    },
     orderType: {
       type: String,
       enum: Object.values(OrderType),

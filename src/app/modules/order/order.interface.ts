@@ -89,6 +89,9 @@ export interface IOrderFoodInput {
     price: number;
   }[];
   variant: string;
+  // Pizza specific
+  selectedPizzas?: string[];
+  pizzaSlices?: number | null;
 }
 
 
@@ -117,11 +120,14 @@ export interface IOrderFood {
   ingredients?: IOrderIngredient[];
   unitPrice: number;
   lineTotal: number;
+  // Pizza a Metro (Farcita)
+  selectedPizzas?: string[];
+  pizzaSlices?: number | null;
 }
 
 export interface IOrder {
   _id?: Types.ObjectId;
-
+  customOrderId: number;
   orderType: OrderType;
   user?: Types.ObjectId;
   seller?: Types.ObjectId;

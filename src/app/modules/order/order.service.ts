@@ -1,7 +1,7 @@
 
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
-import { Order } from "./order.model";
+import { Counter, Order } from "./order.model";
 import {
   OrderType,
   OrderStatus,
@@ -180,9 +180,23 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
   try {
     const { orderType, foods, customerInfo, deliveryOption } = payload;
+    const getNextCustomOrderId = async (): Promise<number> => {
+      const counter = await Counter.findByIdAndUpdate(
+        { _id: "orderId" },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      
+      return counter.seq;
+    };
 
+
+    console.log(getNextCustomOrderId)
+
+    const customOrderId = await getNextCustomOrderId();
     const calculated = await calculateOrderPrice(foods);
     const orderDoc: any = {
+      customOrderId,
       orderType,
       foods: calculated.foodsWithPrice,
       totalPrice: calculated.totalPrice,
@@ -333,7 +347,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
         }
       })
     );
-
 
     await session.commitTransaction();
     session.endSession();
