@@ -4,6 +4,7 @@ import AppError from '../../errorHelpers/appError';
 import { Category } from './category.model';
 import { categorySearchableFields } from './category.constants';
 import { QueryBuilder } from '../../utils/QueryBuilder';
+import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 
 // const createCategoryService = async (payload: Partial<ICategory>) => {
 //     const category = await Category.create(payload);
@@ -11,15 +12,15 @@ import { QueryBuilder } from '../../utils/QueryBuilder';
 // }
 
 const createCategoryService = async (payload: Partial<ICategory>) => {
-  // Ensure showOrder is number
-  if (!payload.showOrder || isNaN(payload.showOrder)) {
-    payload.showOrder = 1; // default
-  } else {
-    payload.showOrder = Number(payload.showOrder);
-  }
+    // Ensure showOrder is number
+    if (!payload.showOrder || isNaN(payload.showOrder)) {
+        payload.showOrder = 1; // default
+    } else {
+        payload.showOrder = Number(payload.showOrder);
+    }
 
-  const category = await Category.create(payload);
-  return category;
+    const category = await Category.create(payload);
+    return category;
 };
 
 const getSingleCategory = async (slug: string) => {
@@ -72,6 +73,9 @@ const deleteCategory = async (id: string) => {
     }
 
     const deletedOrder = category.showOrder;
+    if (category.image) {
+        await deleteImageFromCloudinary(category.image);
+    }
 
     await Category.findByIdAndDelete(id);
 

@@ -5,16 +5,19 @@ import { NextFunction, Request, Response } from "express"
 import { CategoryServices } from './category.service';
 import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
+import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
+import AppError from '../../errorHelpers/appError';
+import { Category } from './category.model';
 
 const createCategory = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
-    
+
     if (req.file) {
         payload.image = (req.file as any).path;
     }
 
     const category = await CategoryServices.createCategoryService(payload)
-    
+
     sendResponse(res, {
         statusCode: httpStatus.CREATED,
         success: true,
@@ -47,23 +50,58 @@ const deleteCategory = catchAsync(async (req: Request, res: Response, next: Next
     })
 })
 
-const updateCategory = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const categoryId = req.params.id as string;
-    const payload = req.body;
-    
-    // Get image URL from multer file upload if new image is uploaded
-    if (req.file) {
-        payload.image = (req.file as any).path;
-    }
+// const updateCategory = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+//     const categoryId = req.params.id as string;
+//     const payload = req.body;
 
-    const category = await CategoryServices.updateCategory(categoryId, payload)
-    sendResponse(res, {
-        statusCode: httpStatus.CREATED,
-        success: true,
-        message: "Category Updated Successfully",
-        data: category
-    })
-})
+//     // Get image URL from multer file upload if new image is uploaded
+//     if (req.file) {
+//         payload.image = (req.file as any).path;
+//     }
+
+//     const category = await CategoryServices.updateCategory(categoryId, payload)
+//     sendResponse(res, {
+//         statusCode: httpStatus.CREATED,
+//         success: true,
+//         message: "Category Updated Successfully",
+//         data: category
+//     })
+// })
+
+const updateCategory = catchAsync(
+    async (req: Request, res: Response, next: NextFunction) => {
+        const categoryId = req.params.id as string;
+        const payload = req.body;
+
+        // Find existing category
+        const existingCategory = await Category.findById(categoryId);
+
+        if (!existingCategory) {
+            throw new AppError(httpStatus.NOT_FOUND, "Category not found");
+        }
+
+        // If new image uploaded
+        if (req.file) {
+            const newImage = (req.file as any).path;
+
+            // Delete old image from cloudinary
+            if (existingCategory.image) {
+                await deleteImageFromCloudinary(existingCategory.image);
+            }
+
+            payload.image = newImage;
+        }
+
+        const category = await CategoryServices.updateCategory(categoryId, payload);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Category Updated Successfully",
+            data: category,
+        });
+    }
+);
 
 const getAllCategories = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;

@@ -5,6 +5,9 @@ import { NextFunction, Request, Response } from "express"
 import { FoodServices } from './food.service';
 import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
+import AppError from '../../errorHelpers/appError';
+import { Food } from './food.model';
+import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 
 const createFood = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
@@ -47,23 +50,55 @@ const deleteFood = catchAsync(async (req: Request, res: Response, next: NextFunc
     })
 })
 
-const updateFood = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const foodId = req.params.id as string;
-    const payload = req.body;
+// const updateFood = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+//     const foodId = req.params.id as string;
+//     const payload = req.body;
     
-    // Get image URL from multer file upload if new image is uploaded
-    if (req.file) {
-        payload.image = (req.file as any).path;
+//     // Get image URL from multer file upload if new image is uploaded
+//     if (req.file) {
+//         payload.image = (req.file as any).path;
+//     }
+
+//     const food = await FoodServices.updateFood(foodId, payload)
+//     sendResponse(res, {
+//         statusCode: httpStatus.CREATED,
+//         success: true,
+//         message: "Food Updated Successfully",
+//         data: food
+//     })
+// })
+
+const updateFood = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const foodId = req.params.id as string;
+  const payload = req.body;
+
+  // Find existing food
+  const existingFood = await Food.findById(foodId);
+  if (!existingFood) {
+    throw new AppError(404, "Food not found");
+  }
+
+  // If new image uploaded
+  if (req.file) {
+    const newImage = (req.file as any).path;
+
+    // Delete old image from cloudinary
+    if (existingFood.image) {
+      await deleteImageFromCloudinary(existingFood.image);
     }
 
-    const food = await FoodServices.updateFood(foodId, payload)
-    sendResponse(res, {
-        statusCode: httpStatus.CREATED,
-        success: true,
-        message: "Food Updated Successfully",
-        data: food
-    })
-})
+    payload.image = newImage;
+  }
+
+  const food = await FoodServices.updateFood(foodId, payload);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Food Updated Successfully",
+    data: food
+  });
+});
 
 const getAllFoods = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;

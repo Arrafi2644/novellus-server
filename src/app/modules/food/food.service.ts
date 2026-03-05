@@ -5,6 +5,7 @@ import { Food } from './food.model';
 import { foodSearchableFields } from './food.constants';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 import mongoose from 'mongoose';
+import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 
 const createFoodService = async (payload: Partial<IFood>) => {
     // Validate category exists if provided
@@ -50,6 +51,10 @@ const deleteFood = async (id: string) => {
         throw new AppError(httpStatus.NOT_FOUND, "Food Not Found")
     }
 
+    if (food.image) {
+        await deleteImageFromCloudinary(food.image);
+    }
+    
     await Food.findByIdAndDelete(id);
 
     return {
