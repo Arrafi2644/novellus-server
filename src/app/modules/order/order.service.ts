@@ -190,9 +190,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       return counter.seq;
     };
 
-
-    console.log(getNextCustomOrderId)
-
     const customOrderId = await getNextCustomOrderId();
     const calculated = await calculateOrderPrice(foods);
     const orderDoc: any = {

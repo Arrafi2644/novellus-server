@@ -233,7 +233,7 @@ export const generatePdf = async (data: IInvoiceData): Promise<Buffer> => {
       doc.font(sectionFont).fontSize(14).fillColor("#111").text("Order Information");
       doc.moveDown(0.2);
       doc.font(normalFont).fontSize(12)
-        .text(`Order ID: ${data?.customOrderId ?? data.orderId}`)
+        .text(`Order ID: #${data?.customOrderId ?? data.orderId}`)
         .text(`Order Date: ${data.orderDate.toDateString()}`)
         .text(`Order Type: ${data.orderType}`)
         .text(`Order Status: ${data.orderStatus}`)

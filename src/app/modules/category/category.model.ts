@@ -29,6 +29,7 @@ const categorySchema = new Schema<ICategory>({
      showOrder: {
     type: Number,
     default: 1, // 🔹 default value
+    unique: true, // 🔹 ensure uniqueness
   },
 }, {
     timestamps: true,

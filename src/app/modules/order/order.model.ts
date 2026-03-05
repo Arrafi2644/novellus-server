@@ -191,6 +191,7 @@ const orderSchema = new Schema<IOrder>(
       type: Number,
       unique: true,
       required: true,
+      index: true,
     },
     orderType: {
       type: String,

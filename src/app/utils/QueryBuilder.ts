@@ -33,6 +33,33 @@ export class QueryBuilder<T> {
     //     return this
     // }
 
+// search(searchableField: string[]): this {
+//   const searchTerm = this.query.searchTerm || "";
+
+//   if (!searchTerm.trim()) {
+//     return this;
+//   }
+
+//   const searchConditions: any[] = [];
+
+//   if (Types.ObjectId.isValid(searchTerm)) {
+//     searchConditions.push({ _id: new Types.ObjectId(searchTerm) });
+//   }
+
+//   searchableField.forEach(field => {
+//     searchConditions.push({
+//       [field]: { $regex: searchTerm, $options: "i" }
+//     });
+//   });
+
+//   this.modelQuery = this.modelQuery.find({
+//     $or: searchConditions
+//   });
+
+//   return this;
+// }
+
+
 search(searchableField: string[]): this {
   const searchTerm = this.query.searchTerm || "";
 
@@ -42,18 +69,28 @@ search(searchableField: string[]): this {
 
   const searchConditions: any[] = [];
 
-  if (Types.ObjectId.isValid(searchTerm)) {
-    searchConditions.push({ _id: new Types.ObjectId(searchTerm) });
+  // number search (customOrderId)
+  if (!isNaN(Number(searchTerm))) {
+    searchConditions.push({
+      customOrderId: Number(searchTerm),
+    });
   }
 
-  searchableField.forEach(field => {
+  // ObjectId search
+  if (Types.ObjectId.isValid(searchTerm)) {
     searchConditions.push({
-      [field]: { $regex: searchTerm, $options: "i" }
+      _id: new Types.ObjectId(searchTerm),
+    });
+  }
+
+  searchableField.forEach((field) => {
+    searchConditions.push({
+      [field]: { $regex: searchTerm, $options: "i" },
     });
   });
 
   this.modelQuery = this.modelQuery.find({
-    $or: searchConditions
+    $or: searchConditions,
   });
 
   return this;
