@@ -6,22 +6,7 @@ import { categorySearchableFields } from './category.constants';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 
-// const createCategoryService = async (payload: Partial<ICategory>) => {
-//     const category = await Category.create(payload);
-//     return category;
-// }
 
-// const createCategoryService = async (payload: Partial<ICategory>) => {
-//     // Ensure showOrder is number
-//     if (!payload.showOrder || isNaN(payload.showOrder)) {
-//         payload.showOrder = 1; // default
-//     } else {
-//         payload.showOrder = Number(payload.showOrder);
-//     }
-
-//     const category = await Category.create(payload);
-//     return category;
-// };
 const createCategoryService = async (payload: Partial<ICategory>) => {
   const newOrder = Number(payload.showOrder) || 1;
 
@@ -37,95 +22,73 @@ const createCategoryService = async (payload: Partial<ICategory>) => {
   return category;
 };
 
-// const updateCategory = async (
-//     categoryId: string,
-//     payload: Partial<ICategory>
-// ) => {
-
-//     const existingCategory = await Category.findById(categoryId);
-//     if (!existingCategory) {
-//         throw new AppError(httpStatus.NOT_FOUND, "Category not found");
-//     }
-
-//     const oldOrder = existingCategory.showOrder;
-//     const newOrder = payload.showOrder;
-
-//     if (newOrder && newOrder !== oldOrder) {
-
-//         if (newOrder < oldOrder) {
-//             await Category.updateMany(
-//                 {
-//                     _id: { $ne: categoryId },
-//                     showOrder: { $gte: newOrder, $lt: oldOrder },
-//                 },
-//                 { $inc: { showOrder: 1 } }
-//             );
-//         } else {
-//             await Category.updateMany(
-//                 {
-//                     _id: { $ne: categoryId },
-//                     showOrder: { $gt: oldOrder, $lte: newOrder },
-//                 },
-//                 { $inc: { showOrder: -1 } }
-//             );
-//         }
-//     }
-
-//     const updatedCategory = await Category.findByIdAndUpdate(
-//         categoryId,
-//         payload,
-//         { new: true, runValidators: true }
-//     );
-
-//     return updatedCategory;
-// };
-
+import mongoose from "mongoose";
 
 const updateCategory = async (
   categoryId: string,
   payload: Partial<ICategory>
 ) => {
-  const existingCategory = await Category.findById(categoryId);
 
-  if (!existingCategory) {
-    throw new AppError(httpStatus.NOT_FOUND, "Category not found");
-  }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const oldOrder = existingCategory.showOrder;
-  const newOrder = Number(payload.showOrder);
+  try {
 
-  if (newOrder !== undefined && newOrder !== oldOrder) {
+    const existingCategory = await Category.findById(categoryId).session(session);
 
-    if (newOrder < oldOrder) {
-      // move up
-      await Category.updateMany(
-        {
-          _id: { $ne: categoryId },
-          showOrder: { $gte: newOrder, $lt: oldOrder },
-        },
-        { $inc: { showOrder: 1 } }
-      );
-    } else {
-      // move down
-      await Category.updateMany(
-        {
-          _id: { $ne: categoryId },
-          showOrder: { $gt: oldOrder, $lte: newOrder },
-        },
-        { $inc: { showOrder: -1 } }
-      );
+    if (!existingCategory) {
+      throw new AppError(httpStatus.NOT_FOUND, "Category not found");
     }
 
-    payload.showOrder = newOrder;
+    const oldOrder = existingCategory.showOrder;
+    const newOrder = Number(payload.showOrder);
+
+    if (newOrder && newOrder !== oldOrder) {
+
+      // temporarily move current category
+      await Category.findByIdAndUpdate(
+        categoryId,
+        { showOrder: -1 },
+        { session }
+      );
+
+      if (newOrder < oldOrder) {
+        await Category.updateMany(
+          {
+            showOrder: { $gte: newOrder, $lt: oldOrder },
+          },
+          { $inc: { showOrder: 1 } },
+          { session }
+        );
+      } else {
+        await Category.updateMany(
+          {
+            showOrder: { $gt: oldOrder, $lte: newOrder },
+          },
+          { $inc: { showOrder: -1 } },
+          { session }
+        );
+      }
+
+      payload.showOrder = newOrder;
+    }
+
+    const updatedCategory = await Category.findByIdAndUpdate(
+      categoryId,
+      payload,
+      { new: true, runValidators: true, session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return updatedCategory;
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  const updatedCategory = await Category.findByIdAndUpdate(
-    categoryId,
-    payload,
-    { new: true, runValidators: true }
-  );
-
-  return updatedCategory;
 };
 
 const getSingleCategory = async (slug: string) => {
@@ -137,38 +100,6 @@ const getSingleCategory = async (slug: string) => {
         data: category
     }
 };
-
-// const deleteCategory = async (id: string) => {
-//     const category = await Category.findById(id);
-//     if (!category) {
-//         throw new AppError(httpStatus.NOT_FOUND, "Category Not Found")
-//     }
-
-//     await Category.findByIdAndDelete(id);
-
-//     return {
-//         data: null
-//     }
-// };
-
-// const updateCategory = async (
-//     categoryId: string,
-//     payload: Partial<ICategory>
-// ) => {
-//     // Check if category exists
-//     const existingCategory = await Category.findById(categoryId);
-//     if (!existingCategory) {
-//         throw new AppError(httpStatus.NOT_FOUND, "Category not found");
-//     }
-
-//     // Update category
-//     const updatedCategory = await Category.findByIdAndUpdate(categoryId, payload, {
-//         new: true,
-//         runValidators: true,
-//     });
-
-//     return updatedCategory;
-// };
 
 const deleteCategory = async (id: string) => {
 
