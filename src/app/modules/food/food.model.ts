@@ -195,38 +195,42 @@ const foodSchema = new Schema<IFood>(
 );
 
 foodSchema.pre("save", async function (next) {
-    if (this.isModified("name")) {
-        const baseSlug = this.name.toLowerCase().split(" ").join("-")
-        let slug = `${baseSlug}`
+  if (this.isModified("name")) {
+    // const baseSlug = this.name.toLowerCase().split(" ").join("-")
+    const baseSlug = this.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    let slug = `${baseSlug}`
 
-        let counter = 1;
+    let counter = 1;
 
-        while (await Food.exists({ slug })) {
-            slug = `${baseSlug}-${counter++}`;
-        }
-
-        this.slug = slug;
+    while (await Food.exists({ slug })) {
+      slug = `${baseSlug}-${counter++}`;
     }
+
+    this.slug = slug;
+  }
 })
 
 foodSchema.pre("findOneAndUpdate", async function (next) {
-    const food = this.getUpdate() as Partial<IFood>
+  const food = this.getUpdate() as Partial<IFood>
 
-    if (food.name) {
-        const baseSlug = food.name.toLowerCase().split(" ").join("-")
-        let slug = `${baseSlug}`
+  if (food.name) {
+    const baseSlug = food.name.toLowerCase().split(" ").join("-")
+    let slug = `${baseSlug}`
 
-        let counter = 1; // Start counter from 1
+    let counter = 1; // Start counter from 1
 
-        // Check for existing slug and increment the counter
-        while (await Food.exists({ slug })) {
-            slug = `${baseSlug}-${counter++}`;
-        }
-
-        food.slug = slug
+    // Check for existing slug and increment the counter
+    while (await Food.exists({ slug })) {
+      slug = `${baseSlug}-${counter++}`;
     }
 
-    this.setUpdate(food)
+    food.slug = slug
+  }
+
+  this.setUpdate(food)
 })
 
 export const Food = model<IFood>("Food", foodSchema);
