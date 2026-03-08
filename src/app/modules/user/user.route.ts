@@ -16,7 +16,7 @@ router.post(
 )
 router.get('/me', checkAuth(...Object.values(Role)), UserControllers.getMe)
 router.get("/all-users", checkAuth(Role.OWNER), UserControllers.getAllUsers )
-router.get("/:id", checkAuth(Role.OWNER), UserControllers.getSingleUser )
+router.get("/:id", UserControllers.getSingleUser )
 router.delete("/:id", checkAuth(Role.OWNER), UserControllers.deleteUser )
 router.patch("/update-profile", checkAuth(...Object.values(Role)), multerUpload.single('picture'), validateRequest(updateUserZodSchema), UserControllers.updateProfile)
 router.patch("/:id", checkAuth(Role.OWNER), multerUpload.single('picture'), validateRequest(updateUserZodSchema), UserControllers.updateUser)
