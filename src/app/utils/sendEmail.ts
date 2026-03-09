@@ -21,6 +21,7 @@ interface SendEmailOptions {
     templateName: string;
     templateData?: Record<string, any>;
     message?: string,
+    resetLinks?: string,
     attachments?: {
         filename: string,
         content: Buffer | string,

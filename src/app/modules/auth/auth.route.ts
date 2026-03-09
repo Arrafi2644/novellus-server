@@ -10,6 +10,8 @@ router.post('/login', AuthControllers.credentialLogin)
 router.post('/logout', AuthControllers.logout)
 router.post("/refresh-token", AuthControllers.getNewAccessToken)
 router.post("/change-password", checkAuth(...Object.values(Role)), validateRequest(changePasswordZodSchema), AuthControllers.changePassword)
+router.post("/forgot-password", AuthControllers.forgotPassword)
+router.post("/reset-password/:token", AuthControllers.resetPassword)
 
 export const authRoutes = router;
 

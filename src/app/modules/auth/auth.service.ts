@@ -6,6 +6,8 @@ import bcryptjs from 'bcryptjs';
 import { createNewAccessTokenWithRefreshToken, createUserTokens } from '../../utils/userTokens';
 import { JwtPayload } from 'jsonwebtoken';
 import { envVars } from '../../config/env';
+import crypto from "crypto";
+import { sendEmail } from '../../utils/sendEmail';
 
 const credentialsLogin = async (payload: Partial<IUser>) => {
     const { email, password } = payload;
@@ -36,7 +38,7 @@ const credentialsLogin = async (payload: Partial<IUser>) => {
 }
 
 const getNewAccessToken = async (refreshToken: string) => {
-   
+
     const newAccessToken = await createNewAccessTokenWithRefreshToken(refreshToken)
     return {
         accessToken: newAccessToken
@@ -61,10 +63,69 @@ const changePassword = async (oldPassword: string, newPassword: string, decodedT
     user.save();
 }
 
+const forgotPassword = async (email: string) => {
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, "User not found");
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+    await user.save();
+
+    // const resetLink = `${envVars.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetLink = `${envVars.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    // TODO: send email
+    console.log("Reset Link:", resetLink);
+    try {
+          await sendEmail({
+            to: email as string,
+            subject: 'Password Reset Request',
+            templateName: 'ForgetPassword',
+            templateData: {
+              resetLink
+            }
+          });
+        } catch (error) {
+          console.error('Failed to send password reset email:', error);
+        }
+
+    return null;
+};
+
+const resetPassword = async (token: string, newPassword: string) => {
+
+    const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+        throw new AppError(httpStatus.BAD_REQUEST, "Invalid or expired token");
+    }
+
+    user.password = await bcryptjs.hash(newPassword, Number(envVars.BCRYPT_SALT_ROUND));
+
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    return null;
+};
+
 
 
 export const AuthServices = {
     credentialsLogin,
     getNewAccessToken,
-    changePassword
+    changePassword,
+    forgotPassword,
+    resetPassword
 }

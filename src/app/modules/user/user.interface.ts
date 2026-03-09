@@ -15,4 +15,6 @@ export interface IUser {
     phone: string;
     role: Role;
     address: string;
+    resetPasswordToken?: string;
+    resetPasswordExpires?: Date;
 }
