@@ -21,6 +21,7 @@ import mongoose, { Types } from "mongoose";
 import { PaymentService } from "../payment/payment.service";
 import { calculateOrderPrice } from "../../utils/calculateOrderTotal";
 import { PrintJob } from "../print/print.model";
+import { io } from "../../../server";
 
 type TCreateOrderPayload = {
   orderType: OrderType;
@@ -42,77 +43,108 @@ const getTransactionId = () => {
 
 // const createOrder = async (payload: TCreateOrderPayload) => {
 //   const session = await mongoose.startSession();
-//   session.startTransaction(); // 🔹 Start transaction
+//   session.startTransaction();
 
 //   try {
 //     const { orderType, foods, customerInfo, deliveryOption } = payload;
+//     const getNextCustomOrderId = async (): Promise<number> => {
+//       const counter = await Counter.findByIdAndUpdate(
+//         { _id: "orderId" },
+//         { $inc: { seq: 1 } },
+//         { new: true, upsert: true }
+//       );
+      
+//       return counter.seq;
+//     };
 
+//     const customOrderId = await getNextCustomOrderId();
 //     const calculated = await calculateOrderPrice(foods);
-
 //     const orderDoc: any = {
+//       customOrderId,
 //       orderType,
 //       foods: calculated.foodsWithPrice,
 //       totalPrice: calculated.totalPrice,
 //       deliveryOption,
-//       customerInfo,
-//       deliveryAddress: customerInfo.address,
+//       status: OrderStatus.PENDING,
+
 //     };
 
-//     // 🔹 Check or create user
-//     let user = await User.findOne({ email: customerInfo.email }).session(session);
+//     /* ---------- USER (ONLINE only) ---------- */
+//     let user = null;
 
-//     if (!user) {
-//       user = await UserServices.createUserService({
-//         name: customerInfo.name,
-//         email: customerInfo.email,
-//         phone: customerInfo.phone,
-//         address: customerInfo.address,
-//       }, session) as any; // pass session inside createUserService
+//     // if (orderType === OrderType.ONLINE && customerInfo) {
+//     if (customerInfo) {
+//       user = await User.findOne({ email: customerInfo.email }).session(session);
+
+//       if (!user) {
+//         user = await UserServices.createUserService(
+//           {
+//             name: customerInfo.name,
+//             email: customerInfo.email,
+//             phone: customerInfo.phone,
+//             address: customerInfo.address,
+//           },
+//           session
+//         );
+//       }
+
+//       orderDoc.user = user._id;
+
+//       // if (deliveryOption === DeliveryOption.DELIVERY) {
+//       if (customerInfo) {
+//         orderDoc.deliveryAddress = customerInfo.address;
+//       }
 //     }
 
-//     if (orderType === OrderType.ONLINE) {
-//       orderDoc.user = user?._id;
-//       orderDoc.paymentMethod = PaymentMethod.COD;
-//       orderDoc.paymentStatus = PaymentStatus.UNPAID;
-//       orderDoc.status = payload.paymentMethod === PaymentMethod.COD ? OrderStatus.COMPLETED : OrderStatus.PENDING;
-//       orderDoc.deliveryAddress = customerInfo.address;
-//     } else if (orderType === OrderType.POS) {
-//       orderDoc.user = user?._id;
+//     /* ---------- POS ---------- */
+//     if (orderType === OrderType.POS) {
 //       orderDoc.seller = payload.seller;
-//       orderDoc.paymentMethod = PaymentMethod.COD;
-//       orderDoc.paymentStatus = PaymentStatus.PAID;
 //       orderDoc.status = OrderStatus.COMPLETED;
-//       orderDoc.deliveryAddress = customerInfo.address;
-//     } else {
-//       throw new AppError(httpStatus.BAD_REQUEST, "Invalid order type");
+
+//       if (deliveryOption === DeliveryOption.DELIVERY) {
+//         orderDoc.deliveryAddress = customerInfo?.address;
+//       }
 //     }
 
-//     // 🔹 Create order
-
-//     console.log("order doc ", orderDoc)
-
+//     /* ---------- CREATE ORDER ---------- */
 //     const order = await Order.create([orderDoc], { session });
 //     const orderId = order[0]._id;
 
-//     // 🔹 Create payment
+//     /* ---------- CREATE PAYMENT ---------- */
 //     const transactionId = getTransactionId();
-//     const payment = await Payment.create([{
-//       order: orderId,
-//       transactionId,
-//       amount: calculated.totalPrice,
-//       paymentStatus: payload.paymentMethod === PaymentMethod.COD ? PaymentStatus.PAID : PaymentStatus.UNPAID,
-//       paymentMethod: payload.paymentMethod,
-//     }], { session });
 
-//     // 🔹 Update order with payment reference
+//     const payment = await Payment.create(
+//       [
+//         {
+//           order: orderId,
+//           transactionId,
+//           amount: calculated.totalPrice,
+//           paymentStatus:
+//             payload.paymentMethod === PaymentMethod.COD
+//               ? PaymentStatus.PAID
+//               : PaymentStatus.UNPAID,
+//           paymentMethod: payload.paymentMethod,
+//         },
+//       ],
+//       { session }
+//     );
+
+//     /* ---------- UPDATE ORDER WITH PAYMENT ---------- */
 //     const updatedOrder = await Order.findByIdAndUpdate(
 //       orderId,
-//       { payment: payment[0]._id },
-//       { new: true, runValidators: true, session }
-//     ).populate("payment");
+//       {
+//         payment: payment[0]._id,
+//         status:
+//           payload.paymentMethod === PaymentMethod.COD
+//             ? OrderStatus.COMPLETED
+//             : OrderStatus.PENDING,
+//       },
+//       { new: true, session }
+//     ).populate("payment").populate("foods.food");
 
-//     // 🔹 Stripe session (only if STRIPE payment)
+//     /* ---------- STRIPE ---------- */
 //     let checkoutUrl: string | null = null;
+
 //     if (payload.paymentMethod === PaymentMethod.STRIPE) {
 //       const stripeSession = await stripe.checkout.sessions.create({
 //         payment_method_types: ["card"],
@@ -121,7 +153,9 @@ const getTransactionId = () => {
 //           {
 //             price_data: {
 //               currency: "EUR",
-//               product_data: { name: `Order #${orderId}` },
+//               product_data: {
+//                 name: `Order #${orderId}`,
+//               },
 //               unit_amount: Math.round(calculated.totalPrice * 100),
 //             },
 //             quantity: 1,
@@ -131,35 +165,69 @@ const getTransactionId = () => {
 //           orderId: orderId.toString(),
 //           paymentId: payment[0]._id.toString(),
 //         },
-//         success_url: `${envVars.STRIPE.STRIPE_SUCCESS_URL}`,
-//         cancel_url: `${envVars.STRIPE.STRIPE_CANCEL_URL}/payment-cancel`,
+//         // success_url: envVars.STRIPE.STRIPE_SUCCESS_URL,
+//         success_url: `${envVars.STRIPE.STRIPE_SUCCESS_URL}?paymentSuccess=true&orderId=${orderId}`,
+//         cancel_url: `${envVars.STRIPE.STRIPE_CANCEL_URL}?paymentSuccess=false&orderId=null`,
 //       });
 
 //       checkoutUrl = stripeSession.url;
 //     }
 
-//     // 🔹 Update totalSell and totalStock for each food
+//     /* ---------- UPDATE FOOD STOCK ---------- */
 //     await Promise.all(
 //       foods.map(async (f) => {
 //         const foodItem = await Food.findById(f.food).session(session);
 //         if (foodItem) {
+//           // 🔹 total sell update
 //           foodItem.totalSell = (foodItem.totalSell || 0) + f.quantity;
-//           foodItem.totalStock = (foodItem.totalStock || 0) - f.quantity;
+
+//           // 🔹 variant stock update
+//           const selectedVariant =
+//             f.variant || foodItem.variants.find(v => v.size === "Normal")?.size;
+
+//           if (!selectedVariant) {
+//             throw new AppError(httpStatus.BAD_REQUEST, `Variant is required for stock update: ${foodItem.name}`);
+//           }
+
+//           const variant = foodItem.variants.find(v => v.size === selectedVariant);
+
+//           if (!variant) {
+//             throw new AppError(
+//               httpStatus.NOT_FOUND,
+//               `Variant "${selectedVariant}" not found for food: ${foodItem.name}`
+//             );
+//           }
+
+//           if (variant.totalStock < f.quantity) {
+//             throw new AppError(
+//               httpStatus.BAD_REQUEST,
+//               `Insufficient stock for ${foodItem.name} (${variant.size})`
+//             );
+//           }
+
+//           variant.totalStock -= f.quantity;
+
 //           await foodItem.save({ session });
 //         }
 //       })
 //     );
 
-//     // 🔹 Commit transaction if everything is ok
 //     await session.commitTransaction();
 //     session.endSession();
 
+//     /* ---------- INVOICE (COD only) ---------- */
 //     let invoiceUrl = null;
-//     // 🔹 Generate invoice only for COD payments
 //     if (payload.paymentMethod === PaymentMethod.COD) {
-//       const invoice = await PaymentService.getInvoiceDownloadUrl(payment[0]._id.toString());
+//       const invoice = await PaymentService.getInvoiceDownloadUrl(
+//         payment[0]._id.toString()
+//       );
 //       invoiceUrl = invoice.downloadUrl;
 //     }
+
+//     // Printer job create
+//     // await PrintJob.create({
+//     //   orderId: order[0]._id.toString(),
+//     // });
 
 //     return {
 //       order: updatedOrder,
@@ -167,31 +235,38 @@ const getTransactionId = () => {
 //       invoiceUrl,
 //     };
 //   } catch (err) {
-//     // 🔹 Rollback transaction on error
 //     await session.abortTransaction();
 //     session.endSession();
 //     throw err;
 //   }
 // };
 
+
+
+
 const createOrder = async (payload: TCreateOrderPayload) => {
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+
     const { orderType, foods, customerInfo, deliveryOption } = payload;
+
     const getNextCustomOrderId = async (): Promise<number> => {
       const counter = await Counter.findByIdAndUpdate(
         { _id: "orderId" },
         { $inc: { seq: 1 } },
         { new: true, upsert: true }
       );
-      
+
       return counter.seq;
     };
 
     const customOrderId = await getNextCustomOrderId();
+
     const calculated = await calculateOrderPrice(foods);
+
     const orderDoc: any = {
       customOrderId,
       orderType,
@@ -199,17 +274,18 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       totalPrice: calculated.totalPrice,
       deliveryOption,
       status: OrderStatus.PENDING,
-
     };
 
-    /* ---------- USER (ONLINE only) ---------- */
+    /* ---------- USER ---------- */
+
     let user = null;
 
-    // if (orderType === OrderType.ONLINE && customerInfo) {
     if (customerInfo) {
+
       user = await User.findOne({ email: customerInfo.email }).session(session);
 
       if (!user) {
+
         user = await UserServices.createUserService(
           {
             name: customerInfo.name,
@@ -219,31 +295,35 @@ const createOrder = async (payload: TCreateOrderPayload) => {
           },
           session
         );
+
       }
 
       orderDoc.user = user._id;
 
-      // if (deliveryOption === DeliveryOption.DELIVERY) {
-      if (customerInfo) {
-        orderDoc.deliveryAddress = customerInfo.address;
-      }
+      orderDoc.deliveryAddress = customerInfo.address;
     }
 
     /* ---------- POS ---------- */
+
     if (orderType === OrderType.POS) {
+
       orderDoc.seller = payload.seller;
       orderDoc.status = OrderStatus.COMPLETED;
 
       if (deliveryOption === DeliveryOption.DELIVERY) {
         orderDoc.deliveryAddress = customerInfo?.address;
       }
+
     }
 
     /* ---------- CREATE ORDER ---------- */
+
     const order = await Order.create([orderDoc], { session });
+
     const orderId = order[0]._id;
 
     /* ---------- CREATE PAYMENT ---------- */
+
     const transactionId = getTransactionId();
 
     const payment = await Payment.create(
@@ -262,7 +342,8 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       { session }
     );
 
-    /* ---------- UPDATE ORDER WITH PAYMENT ---------- */
+    /* ---------- UPDATE ORDER ---------- */
+
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       {
@@ -273,12 +354,16 @@ const createOrder = async (payload: TCreateOrderPayload) => {
             : OrderStatus.PENDING,
       },
       { new: true, session }
-    ).populate("payment").populate("foods.food");
+    )
+      .populate("payment")
+      .populate("foods.food");
 
     /* ---------- STRIPE ---------- */
+
     let checkoutUrl: string | null = null;
 
     if (payload.paymentMethod === PaymentMethod.STRIPE) {
+
       const stripeSession = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         mode: "payment",
@@ -298,29 +383,28 @@ const createOrder = async (payload: TCreateOrderPayload) => {
           orderId: orderId.toString(),
           paymentId: payment[0]._id.toString(),
         },
-        // success_url: envVars.STRIPE.STRIPE_SUCCESS_URL,
         success_url: `${envVars.STRIPE.STRIPE_SUCCESS_URL}?paymentSuccess=true&orderId=${orderId}`,
         cancel_url: `${envVars.STRIPE.STRIPE_CANCEL_URL}?paymentSuccess=false&orderId=null`,
       });
 
       checkoutUrl = stripeSession.url;
+
     }
 
     /* ---------- UPDATE FOOD STOCK ---------- */
+
     await Promise.all(
+
       foods.map(async (f) => {
+
         const foodItem = await Food.findById(f.food).session(session);
+
         if (foodItem) {
-          // 🔹 total sell update
+
           foodItem.totalSell = (foodItem.totalSell || 0) + f.quantity;
 
-          // 🔹 variant stock update
           const selectedVariant =
             f.variant || foodItem.variants.find(v => v.size === "Normal")?.size;
-
-          if (!selectedVariant) {
-            throw new AppError(httpStatus.BAD_REQUEST, `Variant is required for stock update: ${foodItem.name}`);
-          }
 
           const variant = foodItem.variants.find(v => v.size === selectedVariant);
 
@@ -341,39 +425,53 @@ const createOrder = async (payload: TCreateOrderPayload) => {
           variant.totalStock -= f.quantity;
 
           await foodItem.save({ session });
+
         }
+
       })
+
     );
+
+    /* ---------- COMMIT TRANSACTION ---------- */
 
     await session.commitTransaction();
     session.endSession();
 
-    /* ---------- INVOICE (COD only) ---------- */
+    /* ---------- SOCKET EVENT ---------- */
+
+    if (updatedOrder) {
+      io.emit("new-order", updatedOrder);
+    }
+
+    /* ---------- INVOICE ---------- */
+
     let invoiceUrl = null;
+
     if (payload.paymentMethod === PaymentMethod.COD) {
+
       const invoice = await PaymentService.getInvoiceDownloadUrl(
         payment[0]._id.toString()
       );
-      invoiceUrl = invoice.downloadUrl;
-    }
 
-    // Printer job create
-    // await PrintJob.create({
-    //   orderId: order[0]._id.toString(),
-    // });
+      invoiceUrl = invoice.downloadUrl;
+
+    }
 
     return {
       order: updatedOrder,
       checkoutUrl,
       invoiceUrl,
     };
+
   } catch (err) {
+
     await session.abortTransaction();
     session.endSession();
+
     throw err;
+
   }
 };
-
 
 const getSingleOrder = async (id: string) => {
   const order = await Order.findById(id).populate("user").populate("seller").populate("payment").populate("foods.food");
