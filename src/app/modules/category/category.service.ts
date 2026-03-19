@@ -5,6 +5,7 @@ import { Category } from './category.model';
 import { categorySearchableFields } from './category.constants';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
+import mongoose from "mongoose";
 
 
 const createCategoryService = async (payload: Partial<ICategory>) => {
@@ -22,7 +23,6 @@ const createCategoryService = async (payload: Partial<ICategory>) => {
   return category;
 };
 
-import mongoose from "mongoose";
 
 const updateCategory = async (
   categoryId: string,

@@ -49,17 +49,7 @@ const getSingleUser = catchAsync(async (req: Request, res: Response, next: NextF
     })
 })
 
-const deleteUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = req.params.id as string
-    const result = await UserServices.deleteUser(userId);
 
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: "User Deleted Successfully",
-        data: result.data
-    })
-})
 
 const updateUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.params.id as string;
@@ -81,6 +71,18 @@ const updateUser = catchAsync(async (req: Request, res: Response, next: NextFunc
     })
 })
 
+
+const deleteUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.params.id as string
+    const result = await UserServices.deleteUser(userId);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "User Deleted Successfully",
+        data: result.data
+    })
+})
 const getAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
     const result = await UserServices.getAllUsers(query as Record<string, string>);

@@ -93,18 +93,7 @@ const getSingleUser = async (id: string) => {
     }
 };
 
-const deleteUser = async (id: string) => {
-    const user = await User.findById(id);
-    if (!user) {
-        throw new AppError(httpStatus.NOT_FOUND, "User Not Found")
-    }
-     
-    await User.findByIdAndDelete(id);
-    
-    return {
-        data: null
-    }
-};
+
 
 const updateUser = async (
     userId: string,
@@ -140,6 +129,19 @@ const updateUser = async (
     });
 
     return updatedUser;
+};
+
+const deleteUser = async (id: string) => {
+    const user = await User.findById(id);
+    if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, "User Not Found")
+    }
+     
+    await User.findByIdAndDelete(id);
+    
+    return {
+        data: null
+    }
 };
 
 const getAllUsers = async (query: Record<string, string>) => {

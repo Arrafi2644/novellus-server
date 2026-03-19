@@ -68,7 +68,7 @@ import { Server as SocketIOServer } from "socket.io";
 
 export let io: SocketIOServer;
 
-let server: any; // ✅ এখানে ঠিক type
+let server: any;
 
 const startServer = async () => {
   try {
