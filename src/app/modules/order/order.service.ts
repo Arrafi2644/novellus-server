@@ -231,7 +231,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     );
 
     await sendEmail({
-      to: "arrafifayezjoy@gmail.com", 
+      to: "Syfur.bd21@gmail.com", 
       subject: 'New Order Received - Pizzerianovellus',
       templateName: 'orderReceivedOwner',
       templateData: {
